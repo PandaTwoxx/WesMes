@@ -1,7 +1,7 @@
 """Chatting platform
 """
 
-import os
+import secrets
 import sys
 import time
 import logging
@@ -15,8 +15,7 @@ def config():
     """Configures flask app
     """
     logging.config.fileConfig('logger.conf')
-    app.config['SECRET_KEY'] = os.urandom(24).hex()
-
+    app.config['SECRET_KEY'] = secrets.token_hex()
 
 def run():
     """Runs server initilization
