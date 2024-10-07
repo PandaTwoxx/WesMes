@@ -8,14 +8,15 @@ import logging
 import logging.config
 
 from waitress import serve
-from service.routes import app
-
+from service.routes import app, login_manager
+from service.classes import LaunchError
 
 def config():
     """Configures flask app
     """
     logging.config.fileConfig('logger.conf')
     app.config['SECRET_KEY'] = secrets.token_hex()
+    login_manager.init_app(app)
 
 def run():
     """Runs server initilization
@@ -29,7 +30,7 @@ def run():
     except OSError as e:
         logger.error('OSError, failed to start app: %s', e)
         sys.exit()
-    except e:
+    except LaunchError as e:
         logger.error('Error: %s', e)
         sys.exit()
 
