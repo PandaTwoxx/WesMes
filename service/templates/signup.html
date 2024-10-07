@@ -1,0 +1,34 @@
+{% extends "layouts/index_nav.html" %}
+
+{% block title %}Signup{% endblock %}
+
+{% block content %}
+  <center>
+    <br>
+    <br>
+    <form action="/create_user" method="post" style="width:30%;">
+        <h2 style="font-family: sans-serif;">Signup</h2>
+        <div class="input-group mb-3">
+            <span class="input-group-text" id="basic-addon1">@</span>
+            <input type="text" class="form-control" placeholder="Username" required aria-label="Username" aria-describedby="basic-addon1" name="username" id="username">
+          </div>
+          <div class="row">
+            <div class="col">
+              <input type="text" class="form-control" placeholder="Name" required aria-label="Name" name="name" id="name">
+            </div>
+          </div>
+          <br>
+          <div class="input-group mb-3">
+            <input type="email" class="form-control" placeholder="Email" required aria-label="Email" name="email" id="email">
+          </div>
+          <div class="input-group mb-3">
+            <input type="password" class="form-control" placeholder="Password" required aria-label="Password" name="password" id="password" minlength="8">
+          </div>                  
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary">Register</button>
+            <input type="text" value="{{next | default("/home")}}" hidden id="next" name="next"/>
+            <input type="text" value="{{back | default("/signup")}}" hidden id="back-ref" name="back-ref"/>
+          </div>
+    </form>
+  </center>
+{% endblock %}

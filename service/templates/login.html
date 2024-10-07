@@ -1,0 +1,30 @@
+{% extends "layouts/index_nav.html" %}
+
+{% block title %}Login{% endblock %}
+
+
+{% block content %}
+  <center>
+    <br>
+    <br>
+    <form action="/login" method="post" style="width:30%;">
+        <h2 style="font-family: sans-serif;">Login</h2>
+        <div class="input-group mb-3">
+            <span class="input-group-text">@</span>
+            <div class="form-floating">
+              <input type="text" class="form-control" id="floatingInputGroup1" placeholder="Username" name="username">
+              <label for="floatingInputGroup1">Username</label>
+            </div>
+          </div>
+        <div class="form-floating">
+            <input type="password" class="form-control" id="floatingPassword" placeholder="Password" name="password">
+            <label for="floatingPassword">Password</label>
+          </div>
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary">Login</button>
+            <input type="text" value="{{next | default("/home")}}" hidden id="next" name="next"/>
+            <input type="text" value="{{back | default("/login")}}" hidden id="back-ref" name="back-ref"/>
+        </div>
+    </form>
+  </center>
+{% endblock %}
