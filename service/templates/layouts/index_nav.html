@@ -59,6 +59,13 @@
             </div>
         {% endif %}
     {% endwith %}
+    {% with message = get_flashed_messages(category_filter=["warning"]) %}
+        {% if message %}
+            <div class="warning warning-info">
+                {{message[0]}}
+            </div>
+        {% endif %}
+    {% endwith %}
     <main style="height:100%;">
         {% block content %}{% endblock %}
     </main>

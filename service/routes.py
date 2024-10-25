@@ -1,5 +1,6 @@
 """The app routes"""
 import logging
+import json
 import redis
 
 from flask import render_template, Flask, request, flash, redirect, url_for
@@ -25,18 +26,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 logger = logging.getLogger('messanger')
 login_manager = LoginManager()
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
-
-
-# Login-Manager init
-login_manager.login_view = "login_page"
-login_manager.login_message = "Hey there, To protect your account please re-enter your information."
-login_manager.login_message_category = "info"
-login_manager.refresh_view = "accounts.reauthenticate"
-login_manager.needs_refresh_message = (
-    "To protect your account, please reauthenticate to access this page."
-)
-login_manager.needs_refresh_message_category = "info"
-login_manager.session_protection = "strong"
 
 
 # For proxies
@@ -80,7 +69,7 @@ def signup():
         request.method
     )
     next_arg = request.args.get('next')
-    return render_template("signup.html", next = next_arg, back = '/signup')
+    return render_template("signup.html", next = next_arg or url_for('home'), back = '/signup')
 
 
 @app.get('/home')
@@ -94,7 +83,7 @@ def home():
 def login_page():
     """Login Page"""
     next_arg = request.args.get('next')
-    return render_template('login.html', next = next_arg, back = '/login_page')
+    return render_template('login.html', next = next_arg or url_for('home'), back = '/login_page')
 
 
 @app.post("/create_user")
@@ -107,36 +96,36 @@ def create_user():
         request.path,
         request.method
     )
-    if 'name' in request.args and 'email' in request.args and\
-          'username' in request.args and 'password' in request.args:
+    if 'name' in request.form and 'email' in request.form and\
+          'username' in request.form and 'password' in request.form:
         # New User
         new_user = User(
-            name = request.args.get('name'),
-            email = request.args.get('email'),
-            username = request.args.get('username'),
-            password = request.args.get('password'),
+            name = request.form.get('name'),
+            email = request.form.get('email'),
+            username = request.form.get('username'),
+            password = request.form.get('password'),
         )
 
         # Next redirect
-        next_arg = request.args.get('next')
+        next_arg = request.form.get('next')
 
         # Checks if user exists
-        if r.sismember('usernames', new_user.username) == 1 or \
-        r.sismember('emails', new_user.email) == 1:
+        if r.hexists('usernames', new_user.username) == 1 or \
+        r.hexists('emails', new_user.email) == 1:
             flash('User already exsists', category="error")
             return redirect(url_for('signup')), 302
 
         # Added user to redis
-        r.hset('users', mapping = new_user.serialize())
+        r.hset(name='users', key=new_user.get_id(), value=json.dumps(new_user.serialize()))
 
-        r.sadd('usernames', new_user.username)
-        r.sadd('emails', new_user.email)
+        r.hset(name='usernames',key=new_user.username, value=new_user.get_id())
+        r.hset(name='emails',key=new_user.email, value=new_user.get_id())
 
         # Logs in user
         login_user(new_user)
 
         return redirect(next_arg or url_for('index')), 302
-    back_ref = request.args.get('back_ref')
+    back_ref = request.form.get('back_ref')
     return redirect(back_ref or url_for('signup'))
 
 
@@ -149,15 +138,19 @@ def login():
         request.path,
         request.method
     )
-    if 'username' in request.args and 'password' in request.args:
+    if 'username' in request.form and 'password' in request.form:
 
         # User info
-        username = request.args.get('username')
-        password = request.args.get('password')
+        username = request.form.get('username')
+        password = request.form.get('password')
 
+        # Check if exsists
+
+        # User id
+        user_id = r.hget(name='usernames', key=username)
 
         # Gets user dict
-        user_dict = r.hget('users', username)
+        user_dict = json.loads(r.hget('users', user_id))
 
 
         # Gets user object from dict
@@ -176,10 +169,42 @@ def login():
         login_user(user)
 
         # Sends user to next page
-        next_arg = request.args.get('next')
-        return redirect(next_arg or url_for('index'))
-    back_ref = request.args.get('back_ref')
-    return redirect(back_ref or url_for('login'))
+        next_arg = request.form.get('next')
+        return redirect(next_arg or url_for('home'))
+    if 'email' in request.form and 'password' in request.form:
+
+        # User info
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        # User id
+        user_id = r.hget(name='emails', key=email)
+
+        # Gets user dict
+        user_dict = r.hget('users', user_id)
+
+
+        # Gets user object from dict
+        user = User()
+        user.deserialize(user_dict)
+
+
+        # Checks if passwords match
+        if not user.check_password(password):
+            flash('Username or Password is incorrect.', category='error')
+            return redirect('/login_page'), 302
+
+
+
+        # Login user
+        login_user(user)
+
+        # Sends user to next page
+        next_arg = request.form.get('next')
+        return redirect(next_arg or url_for('home'))
+    back_ref = request.form.get('back_ref')
+    flash('Username or Password is incorrect.', category='error')
+    return redirect(back_ref or url_for('login_page'))
 
 
 @app.get('/logout')

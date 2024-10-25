@@ -16,7 +16,7 @@ class User(UserMixin):
         UserMixin
     """
     def __init__(self, name="", email="", password="", username="", profile_pic_link = ""):
-        self.id = str()
+        self.id = str(id(self))
         self.name = str(name)
         self.email = str(email)
         self.password = generate_password_hash(password)
