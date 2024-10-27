@@ -182,38 +182,6 @@ def login():
         # Sends user to next page
         next_arg = request.form.get('next')
         return redirect(next_arg or url_for('home'))
-    # TODO fix ability to login with email/username
-    if 'email' in request.form and 'password' in request.form:
-
-        # User info
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        # User id
-        user_id = r.hget(name='emails', key=email)
-
-        # Gets user dict
-        user_dict = r.hget('users', user_id)
-
-
-        # Gets user object from dict
-        user = User()
-        user.deserialize(user_dict)
-
-
-        # Checks if passwords match
-        if not user.check_password(password):
-            flash('Username or Password is incorrect.', category='error')
-            return redirect('/login_page'), 302
-
-
-
-        # Login user
-        login_user(user)
-
-        # Sends user to next page
-        next_arg = request.form.get('next')
-        return redirect(next_arg or url_for('home'))
     back_ref = request.form.get('back-ref')
     flash('Username or Password is incorrect.', category='error')
     return redirect(back_ref or url_for('login_page'))
