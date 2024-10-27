@@ -26,8 +26,8 @@
           </div>                  
           <div class="col-12">
             <button type="submit" class="btn btn-primary">Register</button>
-            <input type="text" value="{{next | default("/home")}}" hidden id="next" name="next"/>
-            <input type="text" value="{{back | default("/signup")}}" hidden id="back-ref" name="back-ref"/>
+            <input type="text" value="{{next | default(url_for('home'))}}" hidden id="next" name="next"/>
+            <input type="text" value="{{back | default(url_for('signup'))}}" hidden id="back-ref" name="back-ref"/>
           </div>
     </form>
   </center>
