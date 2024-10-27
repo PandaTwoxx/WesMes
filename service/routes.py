@@ -27,6 +27,17 @@ logger = logging.getLogger('messanger')
 login_manager = LoginManager()
 r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 
+# Login-Manager init
+login_manager.login_view = "login_page"
+login_manager.login_message = "Hey there, Please login to access this page."
+login_manager.login_message_category = "error"
+login_manager.refresh_view = "login_page"
+login_manager.needs_refresh_message = (
+    "To protect your account, please reauthenticate to access this page."
+)
+login_manager.needs_refresh_message_category = "info"
+login_manager.session_protection = "strong"
+
 
 # For proxies
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
@@ -125,7 +136,7 @@ def create_user():
         login_user(new_user)
 
         return redirect(next_arg or url_for('index')), 302
-    back_ref = request.form.get('back_ref')
+    back_ref = request.form.get('back-ref')
     return redirect(back_ref or url_for('signup'))
 
 
@@ -171,6 +182,7 @@ def login():
         # Sends user to next page
         next_arg = request.form.get('next')
         return redirect(next_arg or url_for('home'))
+    # TODO fix ability to login with email/username
     if 'email' in request.form and 'password' in request.form:
 
         # User info
@@ -202,7 +214,7 @@ def login():
         # Sends user to next page
         next_arg = request.form.get('next')
         return redirect(next_arg or url_for('home'))
-    back_ref = request.form.get('back_ref')
+    back_ref = request.form.get('back-ref')
     flash('Username or Password is incorrect.', category='error')
     return redirect(back_ref or url_for('login_page'))
 
