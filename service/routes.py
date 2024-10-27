@@ -25,7 +25,7 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 logger = logging.getLogger('messanger')
 login_manager = LoginManager()
-r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
+r = redis.StrictRedis(host='redis-stack', port=6379, db=0, decode_responses=True)
 
 # Login-Manager init
 login_manager.login_view = "login_page"
