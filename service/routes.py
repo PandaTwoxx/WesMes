@@ -130,7 +130,6 @@ def create_user():
         r.hset(name='users', key=new_user.get_id(), value=json.dumps(new_user.serialize()))
 
         r.hset(name='usernames',key=new_user.username, value=new_user.get_id())
-        r.hset(name='emails',key=new_user.email, value=new_user.get_id())
 
         # Logs in user
         login_user(new_user)
@@ -154,12 +153,15 @@ def login():
         # User info
         username = request.form.get('username')
         password = request.form.get('password')
-
-        # Check if exsists
-
+        
         # User id
         user_id = r.hget(name='usernames', key=username)
-
+        
+        # Check if user exsists
+        if user_id is None:
+            back_ref = request.form.get('back-ref')
+            flash('Username or Password is incorrect.', category='error')
+            return redirect(back_ref or url_for('login_page'))
         # Gets user dict
         user_dict = json.loads(r.hget('users', user_id))
 
