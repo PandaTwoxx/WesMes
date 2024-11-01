@@ -153,10 +153,10 @@ def login():
         # User info
         username = request.form.get('username')
         password = request.form.get('password')
-        
+
         # User id
         user_id = r.hget(name='usernames', key=username)
-        
+
         # Check if user exsists
         if user_id is None:
             back_ref = request.form.get('back-ref')
