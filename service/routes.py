@@ -29,7 +29,7 @@ r = redis.StrictRedis(host='redis-stack', port=6379, db=0, decode_responses=True
 
 # Login-Manager init
 login_manager.login_view = "login_page"
-login_manager.login_message = "Hey there, Please login to access this page."
+login_manager.login_message = "You need to login to access this page."
 login_manager.login_message_category = "error"
 login_manager.refresh_view = "login_page"
 login_manager.needs_refresh_message = (
@@ -56,6 +56,18 @@ def send_message(message: str) -> None:
     # send() function will emit a message vent by default
 
 
+@app.errorhandler(404)
+def not_found(error):
+    """The 404 response"""
+    logger.warning(
+        'Client %s connected to %s using method %s but recieved 404 error: %s',
+        request.remote_addr,
+        request.path,
+        request.method,
+        str(error)
+    )
+    return render_template("404.html"), 404
+
 @app.get("/")
 def index():
     """The root html response
@@ -66,7 +78,7 @@ def index():
         request.path,
         request.method
     )
-    return render_template("index.html")
+    return render_template("index.html", current_user=current_user)
 
 
 @app.get('/signup')
@@ -79,6 +91,8 @@ def signup():
         request.path,
         request.method
     )
+    if current_user.is_authenticated:
+        return redirect(url_for('home')),302
     next_arg = request.args.get('next')
     return render_template("signup.html", next = next_arg or url_for('home'), back = '/signup')
 
@@ -93,6 +107,8 @@ def home():
 @app.get('/login_page')
 def login_page():
     """Login Page"""
+    if current_user.is_authenticated:
+        return redirect(url_for('home')),302
     next_arg = request.args.get('next')
     return render_template('login.html', next = next_arg or url_for('home'), back = '/login_page')
 
