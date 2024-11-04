@@ -23,6 +23,7 @@ class User(UserMixin):
         self.password = generate_password_hash(password)
         self.username = str(username)
         self.profile_pic_link = str(profile_pic_link)
+        self.chats = []
 
 
     def check_password(self, password: str) -> bool:
@@ -56,8 +57,11 @@ class User(UserMixin):
             "username": self.username,
             "name": self.name,
             "password": self.password,
-            "profile_pic_link": self.profile_pic_link
+            "profile_pic_link": self.profile_pic_link,
+            "chats": []
         }
+        for chat in self.chats:
+            result["chats"].append(chat)
         return result
 
 
@@ -75,6 +79,8 @@ class User(UserMixin):
             self.name = data["name"]
             self.password = data["password"]
             self.email = data["email"]
+            for chat in data["chats"]:
+                self.chats.append(chat)
 
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error

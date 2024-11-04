@@ -17,7 +17,7 @@ from flask_login import (
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # User Class
-from service.classes import User
+from service.classes import User, Chat
 
 
 # Global/Enivironment variables
@@ -41,6 +41,24 @@ login_manager.session_protection = "strong"
 
 # For proxies
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+
+def get_user_from_handle(handle: str):
+    """Pulls user with a handle
+
+    Args:
+        handle (str): The username
+
+    Returns:
+        User: The found user
+    """
+    user_id = r.hget('usernames', key=handle)
+    new_user = User()
+    jjson = r.hget('usernames', key=user_id)
+    if jjson is None:
+        return None
+    new_user.deserialize(jjson)
+    return new_user
 
 
 @socketio.on("message")
@@ -94,7 +112,8 @@ def signup():
     if current_user.is_authenticated:
         return redirect(url_for('home')),302
     next_arg = request.args.get('next')
-    return render_template("signup.html", next = next_arg or url_for('home'), back = '/signup')
+    return render_template("signup.html", next = next_arg or url_for('home'),
+                           back = '/signup', current_user=current_user)
 
 
 @app.get('/home')
@@ -110,7 +129,48 @@ def login_page():
     if current_user.is_authenticated:
         return redirect(url_for('home')),302
     next_arg = request.args.get('next')
-    return render_template('login.html', next = next_arg or url_for('home'), back = '/login_page')
+    return render_template('login.html', next = next_arg or url_for('home'),
+                           back = '/login_page', current_user=current_user)
+
+@login_required
+@app.get('/chats')
+def chats():
+    """Chat page"""
+    return render_template('chat.html')
+
+
+@login_required
+@app.get('/new_chat')
+def new_chat():
+    """Endpoint for creating a new chat"""
+    return render_template('new_chat.html')
+
+
+@app.post('/create_chat')
+def create_chat():
+    """Creates a new chat
+    """
+    if 'handle' in request.form:
+        handle = request.form['handle']
+        user_obj = get_user_from_handle(handle)
+        nbew_chat = Chat(
+            members=[user_obj,current_user],
+            chat_name=current_user.username+" and "+user_obj.username,
+            messages=[],
+        )
+        user_obj.chats.append(nbew_chat.get_id())
+        current_user.chats.append(nbew_chat.get_id())
+
+        # Add updated user to the database
+        r.hset("users", current_user.get_id(), current_user)
+        r.hset("users", user_obj.get_id(), user_obj)
+
+        # Add chat to hashmap
+        r.hset("chats", nbew_chat.get_id(), nbew_chat.serialize())
+        flash("Chat created", category="success")
+        return redirect(url_for('chat', chat=nbew_chat.get_id()))
+    flash('Unable to find user', category="error")
+    return redirect(url_for('home'))
 
 
 @app.post("/create_user")

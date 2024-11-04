@@ -2,7 +2,6 @@
 
 from service.routes import login_manager, r
 
-
 @login_manager.user_loader
 def user_loader(user_id):
     """Returns user object
