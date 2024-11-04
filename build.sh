@@ -5,6 +5,7 @@ npm install @tailwindcss/typography
 npm install @tailwindcss/forms
 npm install @tailwindcss/aspect-ratio
 npm install @tailwindcss/container-queries
+npm install flowbite
 npx tailwindcss -i ./service/input.css -o ./service/static/output.css
 python3 -m venv .venv
 source .venv/bin/activate
