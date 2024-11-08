@@ -22,8 +22,9 @@ class User(UserMixin):
         self.email = str(email)
         self.password = generate_password_hash(password)
         self.username = str(username)
-        self.profile_pic_link = str(profile_pic_link)
-        self.chats = []
+        self.profile_pic_link = str(profile_pic_link) # TODO: Create place to store profile pics
+        self.chats = [str] # Pointer to the the chat_id
+        self.friends = [str] # Pointer to friend's user_id
 
 
     def check_password(self, password: str) -> bool:
