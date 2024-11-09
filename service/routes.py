@@ -1,5 +1,4 @@
 """The app routes"""
-import logging
 import json
 import redis
 
@@ -23,7 +22,6 @@ from service.classes import User, Chat
 # Global/Enivironment variables
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
-logger = logging.getLogger('messanger')
 login_manager = LoginManager()
 r = redis.StrictRedis(host='redis-stack', port=6379, db=0, decode_responses=True)
 
@@ -54,10 +52,11 @@ def get_user_from_handle(handle: str):
     """
     user_id = r.hget('usernames', key=handle)
     new_user = User()
-    jjson = r.hget('usernames', key=user_id)
+    jjson = r.hget('users', key=user_id)
     if jjson is None:
         return None
-    new_user.deserialize(jjson)
+    app.logger.debug('Data: %s', jjson)
+    new_user = new_user.deserialize(jjson)
     return new_user
 
 
@@ -77,7 +76,7 @@ def send_message(message: str) -> None:
 @app.errorhandler(404)
 def not_found(error):
     """The 404 response"""
-    logger.warning(
+    app.logger.warning(
         'Client %s connected to %s using method %s but recieved 404 error: %s',
         request.remote_addr,
         request.path,
@@ -90,7 +89,7 @@ def not_found(error):
 def index():
     """The root html response
     """
-    logger.info(
+    app.logger.info(
         'Client %s connected to %s using method %s',
         request.remote_addr,
         request.path,
@@ -103,7 +102,7 @@ def index():
 def signup():
     """The signup page
     """
-    logger.info(
+    app.logger.info(
         'Client %s connected to %s using method %s',
         request.remote_addr,
         request.path,
@@ -177,7 +176,7 @@ def create_chat():
 def create_user():
     """The create user response
     """
-    logger.info(
+    app.logger.info(
         'Client %s connected to %s using method %s',
         request.remote_addr,
         request.path,
@@ -218,7 +217,7 @@ def create_user():
 @app.post('/login')
 def login():
     """Logs in user"""
-    logger.info(
+    app.logger.info(
         'Client %s connected to %s using method %s',
         request.remote_addr,
         request.path,
@@ -272,7 +271,7 @@ def logout():
     Returns:
         Response: 302
     """
-    logger.info(
+    app.logger.info(
         'Client %s connected to %s using method %s',
         request.remote_addr,
         request.path,

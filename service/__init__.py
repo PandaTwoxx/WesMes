@@ -5,41 +5,44 @@ import secrets
 import sys
 import time
 import logging
-import logging.config
 
 from waitress import serve
 from service.routes import app, login_manager
 from service.classes import LaunchError
+from service.common import log_handlers
 
 def config():
     """Configures flask app
     """
-    logging.config.fileConfig('logger.conf')
     app.config['SECRET_KEY'] = secrets.token_hex()
+    app.config['LOGGING_LEVEL'] = logging.INFO
     login_manager.init_app(app)
 
 def run():
     """Runs server initilization
     """
-    config()
-    logger = logging.getLogger('messanger')
-    start = time.time()
-    logger.info("App running")
-    try:
-        serve(app, host='0.0.0.0', port=8080)
-    except OSError as e:
-        logger.error('OSError, failed to start app: %s', e)
-        sys.exit()
-    except LaunchError as e:
-        logger.error('Error: %s', e)
-        sys.exit()
+    with app.app_context():
+        config()
+        start = time.time()
+        log_handlers.init_logging(app,'gunicorn.error')
+        app.logger.info(70 * "*")
+        app.logger.info("  S E R V I C E   R U N N I N G  ".center(70, "*"))
+        app.logger.info(70 * "*")
+        try:
+            app.run(host='0.0.0.0', port=8080)
+        except OSError as e:
+            app.logger.error('OSError, failed to start app: %s', e)
+            sys.exit()
+        except LaunchError as e:
+            app.logger.error('Error: %s', e)
+            sys.exit()
 
 
-    logger.info("Stopping App...")
+    app.logger.info("Stopping App...")
 
     end = time.time()
     delta = end - start
 
-    logger.info("Stopped. Ran for %s seconds", delta)
-    logger.info("App Session Ended")
+    app.logger.info("Stopped. Ran for %s seconds", delta)
+    app.logger.info("App Session Ended")
     sys.exit()
