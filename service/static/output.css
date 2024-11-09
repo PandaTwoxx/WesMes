@@ -2196,6 +2196,10 @@ input[type="range"]::-ms-fill-lower {
     margin-right: auto;
   }
 
+  .sm\:ml-64 {
+    margin-left: 16rem;
+  }
+
   .sm\:hidden {
     display: none;
   }
