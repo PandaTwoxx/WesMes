@@ -66,7 +66,7 @@ class User(UserMixin):
         return result
 
 
-    def deserialize(self, data: dict) -> None:
+    def deserialize(self, data: dict):
         """
         Deserializes a User from a dictionary
 
@@ -74,7 +74,7 @@ class User(UserMixin):
             data (dict): A dictionary containing the resource data
         """
         try:
-            self.id = data["id"]
+            self.id = int(data["id"])
             self.profile_pic_link = data["profile_pic_link"]
             self.username = data["username"]
             self.name = data["name"]
@@ -94,7 +94,7 @@ class User(UserMixin):
                 "Invalid User: body of request contained bad or no data "
                 + str(error)
             ) from error
-
+        return self
 class Message:
     """Message class"""
     def __init__(self, user: User, content: str, sent_time: float = time.time()):
@@ -139,7 +139,7 @@ class Message:
         return result
 
 
-    def deserialize(self, data: dict) -> None:
+    def deserialize(self, data: dict):
         """
         Deserializes a User from a dictionary
 
@@ -165,6 +165,7 @@ class Message:
                 "Invalid User: body of request contained bad or no data "
                 + str(error)
             ) from error
+        return self
 
 class Chat:
     """The chat class"""
@@ -183,7 +184,7 @@ class Chat:
             messages (list[Message]): The array of messages
             start_date (float, optional): The time the chat was created. Defaults to time.time().
         """
-        self.id = id(self)
+        self.id = str(id(self))
         self.members = members
         self.start_date = start_date
         self.messages = messages
@@ -217,7 +218,7 @@ class Chat:
         return result
 
 
-    def deserialize(self, data: dict) -> None:
+    def deserialize(self, data: dict):
         """
         Deserializes a User from a dictionary
 
@@ -247,3 +248,4 @@ class Chat:
                 "Invalid User: body of request contained bad or no data "
                 + str(error)
             ) from error
+        return self
