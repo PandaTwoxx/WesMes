@@ -1,7 +1,12 @@
 """Classes"""
 import time
+import json
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+
+
+# Redis object
+from service.common.redis_data import r
 
 
 class DataValidationError(Exception):
@@ -25,6 +30,8 @@ class User(UserMixin):
         self.profile_pic_link = str(profile_pic_link) # TODO: Create place to store profile pics
         self.chats = [str] # Pointer to the the chat_id
         self.friends = [str] # Pointer to friend's user_id
+        self.pending_friends = [str] # Pointer to friend's user_id
+        self.sent_friends = [str] # Pointer to friend's user_id
 
 
     def check_password(self, password: str) -> bool:
@@ -41,6 +48,25 @@ class User(UserMixin):
 
     def get_id(self):
         return self.id
+
+    def push_to_redis(self):
+        """Pushes self to redis
+        """
+        r.hset(f"users:{self.id}", mapping=self.serialize())
+
+    def pull_from_redis(self, current_id):
+        """Pulls self from redis
+        """
+        self.id = r.hget(f"users:{current_id}", "id")
+        self.name = r.hget(f"users:{current_id}", "name")
+        self.email = r.hget(f"users:{current_id}", "email")
+        self.password = r.hget(f"users:{current_id}", "password")
+        self.username = r.hget(f"users:{current_id}", "username")
+        self.profile_pic_link = r.hget(f"users:{current_id}", "profile_pic_link")
+        self.chats = json.loads(r.hget(f"users:{current_id}", "chats"))
+        self.friends = json.loads(r.hget(f"users:{current_id}", "friends"))
+        self.pending_friends = json.loads(r.hget(f"users:{current_id}", "pending_friends"))
+        self.sent_friends = json.loads(r.hget(f"users:{current_id}", "sent_friends"))
 
     ################################
     # SERIALIZE/DESERIALIZE ########
@@ -59,10 +85,11 @@ class User(UserMixin):
             "name": self.name,
             "password": self.password,
             "profile_pic_link": self.profile_pic_link,
-            "chats": []
+            "chats": self.chats,
+            "friends": self.friends,
+            "pending_friends": self.pending_friends,
+            "sent_friends": self.sent_friends
         }
-        for chat in self.chats:
-            result["chats"].append(chat)
         return result
 
 
@@ -74,14 +101,16 @@ class User(UserMixin):
             data (dict): A dictionary containing the resource data
         """
         try:
-            self.id = int(data["id"])
+            self.id = str(data["id"])
             self.profile_pic_link = data["profile_pic_link"]
             self.username = data["username"]
             self.name = data["name"]
             self.password = data["password"]
             self.email = data["email"]
-            for chat in data["chats"]:
-                self.chats.append(chat)
+            self.chats = data["chats"]
+            self.friends = data["friends"]
+            self.pending_friends = data["pending_friends"]
+            self.sent_friends = data["sent_friends"]
 
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error
@@ -97,7 +126,7 @@ class User(UserMixin):
         return self
 class Message:
     """Message class"""
-    def __init__(self, user: User, content: str, sent_time: float = time.time()):
+    def __init__(self, user: str, content: str, sent_time: float = time.time()):
         """The constructor
 
         Args:
@@ -105,7 +134,7 @@ class Message:
             content (str): The message content
             sent_time (float, optional): The time sent. Defaults to time.time().
         """
-        self.id = id(self)
+        self.id = str(id(self))
         self.user = user
         self.content = content
         self.edited_time = sent_time
@@ -119,6 +148,21 @@ class Message:
         """Updates message content"""
         self.content = new_message
         self.edited_time = time.time()
+
+    def push_to_redis(self):
+        """Pushes self to redis
+        """
+        r.hset(f"messages:{self.id}",mapping=self.serialize())
+
+    def pull_from_redis(self, chat_id):
+        """Pulls self from redis
+        """
+        self.id = r.hget(f"messages:{chat_id}", "id")
+        self.user = r.hget(f"messages:{chat_id}", "user")
+        self.content = r.hget(f"messages:{chat_id}", "content")
+        self.edited_time = r.hget(f"messages:{chat_id}", "edited_time")
+        self.sent_time = r.hget(f"messages:{chat_id}", "sent_time")
+
     ################################
     # SERIALIZE/DESERIALIZE ########
     ################################
@@ -134,7 +178,7 @@ class Message:
             "content": self.content,
             "edited_time": self.edited_time,
             "sent_time": self.sent_time,
-            "user": self.user.serialize(),
+            "user": self.user,
         }
         return result
 
@@ -151,9 +195,7 @@ class Message:
             self.content = data["content"]
             self.edited_time = data["edited_time"]
             self.sent_time = data["sent_time"]
-            new_user = User()
-            new_user.deserialize(data["user"])
-            self.user = new_user
+            self.user = User().deserialize(data["user"])
         except AttributeError as error:
             raise DataValidationError("Invalid attribute: " + error.args[0]) from error
         except KeyError as error:
@@ -171,9 +213,9 @@ class Chat:
     """The chat class"""
     def __init__(
         self,
-        members: list[User],
+        members: list[str],
         chat_name: str,
-        messages: list[Message],
+        messages: list[str],
         start_date: float = time.time()
                 ):
         """The constructor
@@ -194,6 +236,20 @@ class Chat:
         """Gets id"""
         return self.id
 
+    def push_to_redis(self):
+        """Pushes self to redis
+        """
+        r.hset(f"chats:{self.id}",mapping=self.serialize())
+
+    def pull_from_redis(self, message_id):
+        """Pulls self from redis
+        """
+        self.id = r.hget(f"chats:{message_id}", "id")
+        self.members = json.loads(r.hget(f"chats:{message_id}", "members"))
+        self.start_date = r.hget(f"chats:{message_id}", "start_date")
+        self.messages = json.loads(r.hget(f"chats:{message_id}", "messages"))
+        self.chat_name = r.hget(f"chats:{message_id}", "chat_name")
+
     ################################
     # SERIALIZE/DESERIALIZE ########
     ################################
@@ -206,15 +262,11 @@ class Chat:
         """
         result = {
             "id": self.id,
-            "members": [],
-            "messages": [],
+            "members": json.dumps(self.members),
+            "messages": json.dumps(self.messages),
             "start_date": self.start_date,
             "chat_name": self.chat_name,
         }
-        for member in self.members:
-            result["members"].append(member.serialize())
-        for message in self.messages:
-            result["messages"].append(message.serialize())
         return result
 
 

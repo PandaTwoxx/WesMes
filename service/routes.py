@@ -1,7 +1,4 @@
 """The app routes"""
-import json
-import redis
-
 from flask import render_template, Flask, request, flash, redirect, url_for
 from flask_socketio import send, SocketIO
 from flask_login import (
@@ -16,14 +13,15 @@ from flask_login import (
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # User Class
-from service.classes import User, Chat
+from service.classes import User, Chat, Message
 
+# Redis object
+from service.common.redis_data import r
 
 # Global/Enivironment variables
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager()
-r = redis.StrictRedis(host='redis-stack', port=6379, db=0, decode_responses=True)
 
 # Login-Manager init
 login_manager.login_view = "login_page"
@@ -41,7 +39,7 @@ login_manager.session_protection = "strong"
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 
-def get_user_from_handle(handle: str):
+def get_user_from_handle(handle: str) -> User:
     """Pulls user with a handle
 
     Args:
@@ -51,17 +49,16 @@ def get_user_from_handle(handle: str):
         User: The found user
     """
     user_id = r.hget('usernames', key=handle)
-    new_user = User()
-    jjson = r.hget('users', key=user_id)
-    if jjson is None:
-        return None
-    app.logger.debug('Data: %s', jjson)
-    new_user = new_user.deserialize(jjson)
-    return new_user
+    return User().pull_from_redis(user_id)
 
+def send_message(chat_id: str, content: str, user: str):
+    """Sends the message to all the users in the chat"""
+    updated_chat = Chat([],"",[])
+    updated_chat.pull_from_redis(chat_id)
+    updated_chat.messages.append(Message(user,content))
 
 @socketio.on("message")
-def send_message(message: str) -> None:
+def share_message(message: str) -> None:
     """Broadcasts message to all users
 
     Args:
@@ -84,6 +81,18 @@ def not_found(error):
         str(error)
     )
     return render_template("404.html"), 404
+
+@app.errorhandler(500)
+def server_error(error):
+    """The 500 response"""
+    app.logger.warning(
+        'Client %s connected to %s using method %s but recieved 500 error: %s',
+        request.remote_addr,
+        request.path,
+        request.method,
+        str(error)
+    )
+    return render_template("500.html"),500
 
 @app.get("/")
 def index():
@@ -161,11 +170,11 @@ def create_chat():
         current_user.chats.append(nbew_chat.get_id())
 
         # Add updated user to the database
-        r.hset("users", current_user.get_id(), current_user)
-        r.hset("users", user_obj.get_id(), user_obj)
+        user_obj.push_to_redis()
+        current_user.push_to_redis()
 
         # Add chat to hashmap
-        r.hset("chats", nbew_chat.get_id(), nbew_chat.serialize())
+        nbew_chat.push_to_redis()
         flash("Chat created", category="success")
         return redirect(url_for('chat', chat=nbew_chat.get_id()))
     flash('Unable to find user', category="error")
@@ -196,13 +205,12 @@ def create_user():
         next_arg = request.form.get('next')
 
         # Checks if user exists
-        if r.hexists('usernames', new_user.username) == 1 or \
-        r.hexists('emails', new_user.email) == 1:
+        if r.hexists('usernames', new_user.username) == 1:
             flash('User already exsists', category="error")
             return redirect(url_for('signup')), 302
 
         # Added user to redis
-        r.hset(name='users', key=new_user.get_id(), value=json.dumps(new_user.serialize()))
+        new_user.push_to_redis()
 
         r.hset(name='usernames',key=new_user.username, value=new_user.get_id())
 
@@ -237,13 +245,10 @@ def login():
             back_ref = request.form.get('back-ref')
             flash('Username or Password is incorrect.', category='error')
             return redirect(back_ref or url_for('login_page'))
-        # Gets user dict
-        user_dict = json.loads(r.hget('users', user_id))
 
-
-        # Gets user object from dict
+        # Gets user object
         user = User()
-        user.deserialize(user_dict)
+        user.pull_from_redis(user_id)
 
 
         # Checks if passwords match
@@ -284,14 +289,9 @@ def logout():
 def load_user_from_id(user_id):
     """Loads user from id for login_manager"""
 
-    # List of usernames
-    usernames = list(r.smembers(user_id))
-
     # Empty user object
     user = User()
 
-    for i in usernames:
-        user.deserialize(r.hget('users', i))
-        if user.get_id() == user_id:
-            return user
-    return User()
+    user.pull_from_redis(user_id)
+
+    return user
