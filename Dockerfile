@@ -7,4 +7,4 @@ RUN pip install -r requirements.txt
 EXPOSE 8080
 EXPOSE 6379
 COPY . .
-CMD ["python3", "launch.py"]
+CMD ["python3", "wsgi.py"]
