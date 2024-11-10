@@ -6,7 +6,6 @@ import sys
 import time
 import logging
 
-from waitress import serve
 from service.routes import app, login_manager
 from service.classes import LaunchError
 from service.common import log_handlers
