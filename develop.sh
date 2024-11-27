@@ -1,7 +1,6 @@
 #!/bin/bash
 
-chmod +x ./config.sh
-./config.sh
+npm install
 npx tailwindcss -i ./service/static/input.css -o ./service/static/output.css
 python3 -m venv .venv
 source .venv/bin/activate
