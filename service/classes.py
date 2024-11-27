@@ -1,4 +1,5 @@
 """Classes"""
+
 import time
 import json
 from flask_login import UserMixin
@@ -12,8 +13,10 @@ from service.common.redis_data import r
 class DataValidationError(Exception):
     """Used for an data validation errors when deserializing"""
 
+
 class LaunchError(Exception):
     """Used for an launch errors when starting the app"""
+
 
 class User(UserMixin):
     """User class
@@ -21,18 +24,22 @@ class User(UserMixin):
     Derives:
         UserMixin
     """
-    def __init__(self, name="", email="", password="", username="", profile_pic_link = ""):
+
+    def __init__(
+        self, name="", email="", password="", username="", profile_pic_link=""
+    ):
         self.id = str(id(self))
         self.name = str(name)
         self.email = str(email)
         self.password = generate_password_hash(password)
         self.username = str(username)
-        self.profile_pic_link = str(profile_pic_link) # TODO: Create place to store profile pics
-        self.chats = [str] # Pointer to the the chat_id
-        self.friends = [str] # Pointer to friend's user_id
-        self.pending_friends = [str] # Pointer to friend's user_id
-        self.sent_friends = [str] # Pointer to friend's user_id
-
+        self.profile_pic_link = str(
+            profile_pic_link
+        )  # TODO: Create place to store profile pics
+        self.chats = [str]  # Pointer to the the chat_id
+        self.friends = [str]  # Pointer to friend's user_id
+        self.pending_friends = [str]  # Pointer to friend's user_id
+        self.sent_friends = [str]  # Pointer to friend's user_id
 
     def check_password(self, password: str) -> bool:
         """Checks Password
@@ -45,28 +52,31 @@ class User(UserMixin):
         """
         return check_password_hash(self.password, password)
 
-
     def get_id(self):
         return self.id
 
     def push_to_redis(self):
-        """Pushes self to redis
-        """
-        r.hset(f"users:{self.id}", mapping=self.serialize())
+        """Pushes self to redis"""
+        # r.hset(f"users:{self.id}", mapping=self.serialize())
+        serialized_data = json.dumps(self.serialize())
+        r.set(f"users:{self.id}", serialized_data)
 
     def pull_from_redis(self, current_id):
-        """Pulls self from redis
-        """
-        self.id = r.hget(f"users:{current_id}", "id")
-        self.name = r.hget(f"users:{current_id}", "name")
-        self.email = r.hget(f"users:{current_id}", "email")
-        self.password = r.hget(f"users:{current_id}", "password")
-        self.username = r.hget(f"users:{current_id}", "username")
-        self.profile_pic_link = r.hget(f"users:{current_id}", "profile_pic_link")
-        self.chats = json.loads(r.hget(f"users:{current_id}", "chats"))
-        self.friends = json.loads(r.hget(f"users:{current_id}", "friends"))
-        self.pending_friends = json.loads(r.hget(f"users:{current_id}", "pending_friends"))
-        self.sent_friends = json.loads(r.hget(f"users:{current_id}", "sent_friends"))
+        """Pulls self from redis"""
+        # self.id = r.hget(f"users:{current_id}", "id")
+        # self.name = r.hget(f"users:{current_id}", "name")
+        # self.email = r.hget(f"users:{current_id}", "email")
+        # self.password = r.hget(f"users:{current_id}", "password")
+        # self.username = r.hget(f"users:{current_id}", "username")
+        # self.profile_pic_link = r.hget(f"users:{current_id}", "profile_pic_link")
+        # self.chats = json.loads(r.hget(f"users:{current_id}", "chats"))
+        # self.friends = json.loads(r.hget(f"users:{current_id}", "friends"))
+        # self.pending_friends = json.loads(r.hget(f"users:{current_id}", "pending_friends"))
+        # self.sent_friends = json.loads(r.hget(f"users:{current_id}", "sent_friends"))
+        data = r.get(f"users:{current_id}")
+
+        if data:
+            self.deserialize(json.loads(data))
 
     ################################
     # SERIALIZE/DESERIALIZE ########
@@ -88,10 +98,9 @@ class User(UserMixin):
             "chats": self.chats,
             "friends": self.friends,
             "pending_friends": self.pending_friends,
-            "sent_friends": self.sent_friends
+            "sent_friends": self.sent_friends,
         }
         return result
-
 
     def deserialize(self, data: dict):
         """
@@ -120,12 +129,14 @@ class User(UserMixin):
             ) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid User: body of request contained bad or no data "
-                + str(error)
+                "Invalid User: body of request contained bad or no data " + str(error)
             ) from error
         return self
+
+
 class Message:
     """Message class"""
+
     def __init__(self, user: str, content: str, sent_time: float = time.time()):
         """The constructor
 
@@ -150,13 +161,11 @@ class Message:
         self.edited_time = time.time()
 
     def push_to_redis(self):
-        """Pushes self to redis
-        """
-        r.hset(f"messages:{self.id}",mapping=self.serialize())
+        """Pushes self to redis"""
+        r.hset(f"messages:{self.id}", mapping=self.serialize())
 
     def pull_from_redis(self, chat_id):
-        """Pulls self from redis
-        """
+        """Pulls self from redis"""
         self.id = r.hget(f"messages:{chat_id}", "id")
         self.user = r.hget(f"messages:{chat_id}", "user")
         self.content = r.hget(f"messages:{chat_id}", "content")
@@ -182,7 +191,6 @@ class Message:
         }
         return result
 
-
     def deserialize(self, data: dict):
         """
         Deserializes a User from a dictionary
@@ -204,20 +212,21 @@ class Message:
             ) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid User: body of request contained bad or no data "
-                + str(error)
+                "Invalid User: body of request contained bad or no data " + str(error)
             ) from error
         return self
 
+
 class Chat:
     """The chat class"""
+
     def __init__(
         self,
         members: list[str],
         chat_name: str,
         messages: list[str],
-        start_date: float = time.time()
-                ):
+        start_date: float = time.time(),
+    ):
         """The constructor
 
         Args:
@@ -237,13 +246,11 @@ class Chat:
         return self.id
 
     def push_to_redis(self):
-        """Pushes self to redis
-        """
-        r.hset(f"chats:{self.id}",mapping=self.serialize())
+        """Pushes self to redis"""
+        r.hset(f"chats:{self.id}", mapping=self.serialize())
 
     def pull_from_redis(self, message_id):
-        """Pulls self from redis
-        """
+        """Pulls self from redis"""
         self.id = r.hget(f"chats:{message_id}", "id")
         self.members = json.loads(r.hget(f"chats:{message_id}", "members"))
         self.start_date = r.hget(f"chats:{message_id}", "start_date")
@@ -269,7 +276,6 @@ class Chat:
         }
         return result
 
-
     def deserialize(self, data: dict):
         """
         Deserializes a User from a dictionary
@@ -282,7 +288,7 @@ class Chat:
             self.start_date = data["start_date"]
             self.chat_name = data["chat_name"]
             for message in data["messages"]:
-                new_message = Message(User(),"")
+                new_message = Message(User(), "")
                 new_message.deserialize(message)
                 self.messages.append(new_message)
             for member in data["members"]:
@@ -297,7 +303,6 @@ class Chat:
             ) from error
         except TypeError as error:
             raise DataValidationError(
-                "Invalid User: body of request contained bad or no data "
-                + str(error)
+                "Invalid User: body of request contained bad or no data " + str(error)
             ) from error
         return self
